@@ -6,4 +6,24 @@ import android.provider.Telephony;
 import android.telephony.*;
 import java.text.*;
 import java.util.*;
-public class SmsReceiver extends BroadcastReceiver{public void onReceive(Context c,Intent i){if(!Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(i.getAction()))return;SharedPreferences p=c.getSharedPreferences("cfg",0);if(!p.getBoolean("enabled",false))return;SmsMessage[] ms=Telephony.Sms.Intents.getMessagesFromIntent(i);if(ms==null||ms.length==0)return;String sender=ms[0].getOriginatingAddress();StringBuilder body=new StringBuilder();for(SmsMessage m:ms)if(m!=null)body.append(m.getMessageBody());String src=p.getString("source","").trim(),tr=p.getString("trigger","");if(!norm(sender).equals(norm(src)))return;if(!body.toString().toLowerCase(Locale.ROOT).contains(tr.toLowerCase(Locale.ROOT)))return;int ok=0,fail=0;for(String d:new String[]{p.getString("d1",""),p.getString("d2",""),p.getString("d3","")})if(d!=null&&!d.trim().isEmpty())try{SmsManager.getDefault().sendTextMessage(d.trim(),null,body.toString(),null,null);ok++;}catch(Exception e){fail++;}String now=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date()),day=new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date()),mon=new SimpleDateFormat("yyyy-MM",Locale.US).format(new Date());SharedPreferences.Editor e=p.edit();e.putInt("day_"+day+"_ok",p.getInt("day_"+day+"_ok",0)+ok).putInt("day_"+day+"_fail",p.getInt("day_"+day+"_fail",0)+fail).putInt("month_"+mon+"_ok",p.getInt("month_"+mon+"_ok",0)+ok).putInt("month_"+mon+"_fail",p.getInt("month_"+mon+"_fail",0)+fail).putString("last",now+" → "+ok+" sent / "+fail+" failed");String h=now+" | "+sender+" | "+ok+" sent / "+fail+" failed\n"+p.getString("history","");if(h.length()>8000)h=h.substring(0,8000);e.putString("history",h).apply();NotificationHelper.show(c,"Forwarding is active • Last: "+now);}static String norm(String n){if(n==null)return "";n=n.replaceAll("[^0-9+]","");if(n.startsWith("+98"))n="0"+n.substring(3);else if(n.startsWith("0098"))n="0"+n.substring(4);return n;}}
+public class SmsReceiver extends BroadcastReceiver{public void onReceive(Context c,Intent i){if(!Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(i.getAction()))return;SharedPreferences p=c.getSharedPreferences("cfg",0);if(!p.getBoolean("enabled",false))return;SmsMessage[] ms=Telephony.Sms.Intents.getMessagesFromIntent(i);if(ms==null||ms.length==0)return;String sender=ms[0].getOriginatingAddress();StringBuilder body=new StringBuilder();for(SmsMessage m:ms)if(m!=null)body.append(m.getMessageBody());
+
+String src = p.getString("source","").trim();
+String tr  = p.getString("trigger","").trim();
+
+if(!src.isEmpty()){
+    if(!norm(sender).equals(norm(src))){
+        return;
+    }
+}
+
+if(tr.isEmpty()){
+    return;
+}
+
+if(!body.toString().toLowerCase(Locale.ROOT)
+        .contains(tr.toLowerCase(Locale.ROOT))){
+    return;
+}
+
+int ok=0,fail=0;for(String d:new String[]{p.getString("d1",""),p.getString("d2",""),p.getString("d3","")})if(d!=null&&!d.trim().isEmpty())try{SmsManager.getDefault().sendTextMessage(d.trim(),null,body.toString(),null,null);ok++;}catch(Exception e){fail++;}String now=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date()),day=new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date()),mon=new SimpleDateFormat("yyyy-MM",Locale.US).format(new Date());SharedPreferences.Editor e=p.edit();e.putInt("day_"+day+"_ok",p.getInt("day_"+day+"_ok",0)+ok).putInt("day_"+day+"_fail",p.getInt("day_"+day+"_fail",0)+fail).putInt("month_"+mon+"_ok",p.getInt("month_"+mon+"_ok",0)+ok).putInt("month_"+mon+"_fail",p.getInt("month_"+mon+"_fail",0)+fail).putString("last",now+" → "+ok+" sent / "+fail+" failed");String h=now+" | "+sender+" | "+ok+" sent / "+fail+" failed\n"+p.getString("history","");if(h.length()>8000)h=h.substring(0,8000);e.putString("history",h).apply();NotificationHelper.show(c,"Forwarding is active • Last: "+now);}static String norm(String n){if(n==null)return "";n=n.replaceAll("[^0-9+]","");if(n.startsWith("+98"))n="0"+n.substring(3);else if(n.startsWith("0098"))n="0"+n.substring(4);return n;}}
